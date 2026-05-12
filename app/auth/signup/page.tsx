@@ -32,22 +32,39 @@ export default function SignUpPage() {
 
     setLoading(true);
 
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
-      options: {
-        emailRedirectTo:
-          process.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL ??
-          `${window.location.origin}/auth/callback`,
-      },
     });
 
     if (error) {
       setError(error.message);
       setLoading(false);
-    } else {
-      setSuccess(true);
-      setLoading(false);
+      return;
+    }
+
+    // Si el usuario fue creado y tiene sesion (email confirmation desactivado)
+    if (data.session) {
+      router.push("/repositorio");
+      router.refresh();
+      return;
+    }
+
+    // Si no hay sesion pero hay usuario, intentar login directo
+    if (data.user) {
+      const { error: loginError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (loginError) {
+        // Si falla el login, probablemente requiere confirmacion de email
+        setSuccess(true);
+        setLoading(false);
+      } else {
+        router.push("/repositorio");
+        router.refresh();
+      }
     }
   };
 
@@ -59,8 +76,8 @@ export default function SignUpPage() {
             <BookMarked className="h-12 w-12 text-primary" />
             <span className="text-3xl font-bold text-foreground">Biblion</span>
           </div>
-          <div className="rounded-lg bg-success/10 p-6">
-            <h2 className="text-xl font-bold text-success mb-2">
+          <div className="rounded-lg bg-primary/10 p-6">
+            <h2 className="text-xl font-bold text-primary mb-2">
               Registro exitoso
             </h2>
             <p className="text-muted-foreground">
