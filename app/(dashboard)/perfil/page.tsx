@@ -13,11 +13,33 @@ export default async function PerfilPage() {
     return null;
   }
 
-  const { data: perfil } = await supabase
+  let { data: perfil } = await supabase
     .from("perfiles")
     .select("*")
     .eq("id", user.id)
     .single();
+
+  // Si no existe el perfil, crearlo
+  if (!perfil) {
+    const { data: newPerfil } = await supabase
+      .from("perfiles")
+      .insert({
+        id: user.id,
+        email: user.email,
+        rol: "usuario",
+      })
+      .select()
+      .single();
+    perfil = newPerfil;
+  }
+
+  // Si aun no hay perfil, usar datos del usuario de auth
+  const perfilData: Perfil = perfil || {
+    id: user.id,
+    email: user.email || "",
+    rol: "usuario",
+    created_at: user.created_at || new Date().toISOString(),
+  };
 
   // Get user stats
   const { count: archivosCount } = await supabase
@@ -37,7 +59,7 @@ export default async function PerfilPage() {
 
   return (
     <PerfilContent
-      perfil={perfil as Perfil}
+      perfil={perfilData}
       stats={{
         archivos: archivosCount || 0,
         favoritos: favoritosCount || 0,
